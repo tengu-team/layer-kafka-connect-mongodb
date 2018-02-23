@@ -47,10 +47,7 @@ def install_kafka_connect_mongodb():
         'offset.storage.topic': juju_unit_name + '.connectoffsets',
         'offset.flush.interval.ms': '10000',
         'config.storage.topic': juju_unit_name + '.connectconfigs',
-        'status.storage.topic': juju_unit_name + '.connectstorage',
-        'config.storage.replication.factor': 1,
-        'offset.storage.replication.factor': 1,
-        'status.storage.replication.factor': 1,
+        'status.storage.topic': juju_unit_name + '.connectstatus',
     }
     set_worker_config(worker_configs)
     set_flag('kafka-connect-mongodb.installed')
