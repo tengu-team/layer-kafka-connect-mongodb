@@ -1,2 +1,3 @@
 includes: ['layer:kafka-connect-base',
            'interface:mongodb']  
+repo: https://github.com/tengu-team/layer-kafka-connect-mongodb.git
