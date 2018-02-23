@@ -18,6 +18,9 @@ juju config connect "db-collections=topic1Collection topic2Collection"
 ```
 Data from `topic1` will be sent to `topic1Collection` and `topic2` to `topic2Collection`.
 
+## Caveats
+This setup only handles json formatted Kafka keys / messages.
+
 ## Authors
 
 This software was created in the [IBCN research group](https://www.ibcn.intec.ugent.be/) of [Ghent University](https://www.ugent.be/en) in Belgium. This software is used in [Tengu](https://tengu.io), a project that aims to make experimenting with data frameworks and tools as easy as possible.
