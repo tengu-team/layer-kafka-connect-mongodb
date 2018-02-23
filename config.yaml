@@ -1,0 +1,17 @@
+options:
+  db-name:
+    type: string
+    default: ""
+    description: MongoDB database name
+  db-collections:
+    type: string
+    default: ""
+    description: Space separated list of mongoDB collection name. Must match the number of topics.
+  write-batch-enabled:
+    type: boolean
+    default: true
+    description: Use batch writing whem a task is getting more records tham write-batch-size
+  write-batch-size:
+    type: int
+    default: 200
+    description: The batch size when using batch writing

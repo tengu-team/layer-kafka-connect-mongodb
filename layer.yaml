@@ -1,0 +1,2 @@
+includes: ['layer:kafka-connect-base',
+           'interface:mongodb']  

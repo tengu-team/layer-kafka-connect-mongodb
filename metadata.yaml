@@ -1,0 +1,9 @@
+name: kafka-connect-mongodb
+summary: Kafka connect for MongoDB
+maintainer: Sander Borny <sanderborny@ugent.be>
+description: |
+  Kafka connect for Mongodb
+subordinate: false
+requires:
+  mongodb:
+    interface: mongodb
