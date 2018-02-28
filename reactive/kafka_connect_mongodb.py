@@ -2,13 +2,18 @@ import os
 from charms.reactive import when, when_any, when_not, set_flag, clear_flag
 from charms.reactive.relations import endpoint_from_flag
 from charmhelpers.core.hookenv import config, log, status_set
-from charms.layer.kafka_connect_base import set_worker_config, register_connector
+from charms.layer.kafka_connect_helpers import (
+    set_worker_config, 
+    register_connector,
+    unregister_connector,
+)
 
 
 conf = config()
+MONGODB_CONNECTOR_NAME = os.environ['JUJU_UNIT_NAME'].split('/')[0] + "-mongodb"
 
 
-@when_not("mongodb.available")
+@when_not("mongodb.connected")
 def blocked_for_mongodb():
     status_set('blocked', 'Waiting for mongodb relation')
 
@@ -18,9 +23,9 @@ def blocked_for_db_name():
     status_set('blocked', 'Waiting for db-name configuration')
 
 
-@when_not("config.set.db-collection")
-def blocked_for_db_collection():
-    status_set('blocked', 'Waiting for db-collection configuration')
+@when_not("config.set.db-collections")
+def blocked_for_db_collections():
+    status_set('blocked', 'Waiting for db-collections configuration')
 
 
 @when_any('config.changed.topics',
@@ -32,6 +37,9 @@ def config_changed():
     clear_flag('kafka-connect-mongodb.running')
 
 
+@when('mongodb.connected',
+    'config.set.db-name',
+    'config.set.db-collections')
 @when_not('kafka-connect-mongodb.installed')
 def install_kafka_connect_mongodb():
     juju_unit_name = os.environ['JUJU_UNIT_NAME'].replace('/', '.')
@@ -55,9 +63,9 @@ def install_kafka_connect_mongodb():
 
 
 @when('kafka-connect.running',
-      'mongodb.available',
+      'mongodb.connected',
       'config.set.db-name',
-      'config.set.db-collection')
+      'config.set.db-collections')
 @when_not('kafka-connect-mongodb.running')
 def start_kafka_connect_mongodb():
     if conf.get('write-batch-enabled') and not conf.get('write-batch-size'):
@@ -67,11 +75,9 @@ def start_kafka_connect_mongodb():
         status_set('blocked', 'Number of collections does not match topics')
         return
 
-    mongodb = endpoint_from_flag('mongodb.available')
+    mongodb = endpoint_from_flag('mongodb.connected')
     mongodb_connection = mongodb.connection_string()
-
-    juju_unit_name = os.environ['JUJU_UNIT_NAME'].split('/')[0]
-    mongodb_connector_name = juju_unit_name + "-mongodb"
+    
     mongodb_connector_config ={
         'connector.class': 'com.startapp.data.MongoSinkConnector',
         'tasks.max': str(conf.get('max-tasks')),
@@ -85,10 +91,20 @@ def start_kafka_connect_mongodb():
         'topics': conf.get("topics").replace(" ", ","),
     }
 
-    response = register_connector(mongodb_connector_config, mongodb_connector_name)
+    response = register_connector(mongodb_connector_config, MONGODB_CONNECTOR_NAME)
     if response and (response.status_code == 200 or response.status_code == 201):
         status_set('active', 'ready')
+        clear_flag('kafka-connect-mongodb.stopped')
         set_flag('kafka-connect-mongodb.running')        
     else:
         log('Could not register/update connector Response: ' + response)
         status_set('blocked', 'Could not register/update connector, retrying next hook.')
+
+
+@when('kafka-connect-mongodb.running')
+@when_not('mongodb.connected', 'kafka-connect-mongodb.stopped')
+def stop_mongodb_connect():
+    response = unregister_connector(MONGODB_CONNECTOR_NAME)
+    if response and (response.status_code == 204 or response.status_code == 404):
+        set_flag('kafka-connect-mongodb.stopped')
+        clear_flag('kafka-connect-mongodb.running')
