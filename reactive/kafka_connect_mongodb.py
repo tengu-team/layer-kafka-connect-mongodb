@@ -28,7 +28,13 @@ def blocked_for_db_collections():
     status_set('blocked', 'Waiting for db-collections configuration')
 
 
+@when_not('config.set.max-tasks')
+def block_for_max_tasks():
+    status_set('blocked', 'Waiting for max-tasks configuration')
+
+
 @when_any('config.changed.topics',
+          'config.changed.max-tasks',
           'config.changed.db-name',
           'config.changed.db-collections',
           'config.changed.write-batch-enabled',
@@ -39,7 +45,8 @@ def config_changed():
 
 @when('mongodb.connected',
     'config.set.db-name',
-    'config.set.db-collections')
+    'config.set.db-collections',
+    'config.set.max-tasks')
 @when_not('kafka-connect-mongodb.installed')
 def install_kafka_connect_mongodb():
     juju_unit_name = os.environ['JUJU_UNIT_NAME'].replace('/', '.')
@@ -56,6 +63,7 @@ def install_kafka_connect_mongodb():
         'offset.flush.interval.ms': '10000',
         'config.storage.topic': juju_unit_name + '.connectconfigs',
         'status.storage.topic': juju_unit_name + '.connectstatus',
+        'config.storage.replication.factor': 1,
     }
     set_worker_config(worker_configs)
     set_flag('kafka-connect-mongodb.installed')
@@ -65,7 +73,8 @@ def install_kafka_connect_mongodb():
 @when('kafka-connect.running',
       'mongodb.connected',
       'config.set.db-name',
-      'config.set.db-collections')
+      'config.set.db-collections',
+      'config.set.max-tasks')
 @when_not('kafka-connect-mongodb.running')
 def start_kafka_connect_mongodb():
     if conf.get('write-batch-enabled') and not conf.get('write-batch-size'):
@@ -108,3 +117,9 @@ def stop_mongodb_connect():
     if response and (response.status_code == 204 or response.status_code == 404):
         set_flag('kafka-connect-mongodb.stopped')
         clear_flag('kafka-connect-mongodb.running')
+
+
+@when('kafka-connect-mongodb.running')
+@when_not('kafka-connect.running')
+def stop_running():
+    clear_flag('kafka-connect-mongodb.running')

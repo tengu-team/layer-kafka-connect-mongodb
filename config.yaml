@@ -7,6 +7,11 @@ options:
     type: string
     default: ""
     description: Space separated list of mongoDB collection name. Must match the number of topics.
+  max-tasks:
+    type: int
+    default: 5
+    description: |
+      Max number of tasks.
   write-batch-enabled:
     type: boolean
     default: true
