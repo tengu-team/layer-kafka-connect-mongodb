@@ -6,11 +6,18 @@ from charms.layer.kafka_connect_helpers import (
     set_worker_config, 
     register_connector,
     unregister_connector,
+    get_configs_topic,
+    get_offsets_topic,
+    get_status_topic,
 )
 
 
 conf = config()
-MONGODB_CONNECTOR_NAME = os.environ['JUJU_UNIT_NAME'].split('/')[0] + "-mongodb"
+JUJU_UNIT_NAME = os.environ['JUJU_UNIT_NAME']
+MODEL_NAME = os.environ['JUJU_MODEL_NAME']
+MONGODB_CONNECTOR_NAME = (MODEL_NAME + 
+                          JUJU_UNIT_NAME.split('/')[0] +
+                          "-mongodb")
 
 
 @when_not("mongodb.connected")
@@ -46,10 +53,10 @@ def config_changed():
 @when('mongodb.connected',
     'config.set.db-name',
     'config.set.db-collections',
-    'config.set.max-tasks')
+    'config.set.max-tasks',
+    'kafka-connect-base.topic-created')
 @when_not('kafka-connect-mongodb.installed')
 def install_kafka_connect_mongodb():
-    juju_unit_name = os.environ['JUJU_UNIT_NAME'].replace('/', '.')
     worker_configs = {
         'key.converter': 'org.apache.kafka.connect.json.JsonConverter',
         'value.converter': 'org.apache.kafka.connect.json.JsonConverter',
@@ -58,12 +65,11 @@ def install_kafka_connect_mongodb():
         'internal.key.converter': 'org.apache.kafka.connect.json.JsonConverter',
         'internal.value.converter': 'org.apache.kafka.connect.json.JsonConverter',
         'internal.key.converter.schemas.enable': 'false',
-        'internal.value.converter.schemas.enable': 'false',
-        'offset.storage.topic': juju_unit_name + '.connectoffsets',
+        'internal.value.converter.schemas.enable': 'false',        
         'offset.flush.interval.ms': '10000',
-        'config.storage.topic': juju_unit_name + '.connectconfigs',
-        'status.storage.topic': juju_unit_name + '.connectstatus',
-        'config.storage.replication.factor': 1,
+        'config.storage.topic': get_configs_topic(),
+        'offset.storage.topic': get_offsets_topic(),
+        'status.storage.topic': get_status_topic(),
     }
     set_worker_config(worker_configs)
     set_flag('kafka-connect-mongodb.installed')
@@ -106,7 +112,7 @@ def start_kafka_connect_mongodb():
         clear_flag('kafka-connect-mongodb.stopped')
         set_flag('kafka-connect-mongodb.running')        
     else:
-        log('Could not register/update connector Response: ' + response)
+        log('Could not register/update connector Response: ' + str(response))
         status_set('blocked', 'Could not register/update connector, retrying next hook.')
 
 

@@ -23,10 +23,11 @@ This setup only handles json formatted Kafka keys / messages.
 
 Default values are used for Kafka connect topic creation, a detailed list of these values can be found [here](https://docs.confluent.io/current/connect/userguide.html). This charm will create three topics for kafka connect with the following naming scheme:
 ```
+model = os.environ['JUJU_MODEL_NAME']
 juju_unit_name = os.environ['JUJU_UNIT_NAME'].replace('/', '.')
-offset.storage.topic = juju_unit_name + '.connectoffsets'
-config.storage.topic = juju_unit_name + '.connectconfigs'
-status.storage.topic = juju_unit_name + '.connectstatus'
+offset.storage.topic = model + '.' + juju_unit_name + '.connectoffsets'
+config.storage.topic = model + '.' + juju_unit_name + '.connectconfigs'
+status.storage.topic = model + '.' + juju_unit_name + '.connectstatus'
 ``` 
 These topics can be manually created before starting Kafka connect with configs that suit your needs.
 
