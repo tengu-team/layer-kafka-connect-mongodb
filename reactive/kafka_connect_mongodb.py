@@ -1,5 +1,6 @@
 import os
 from charms import leadership
+from charms.layer import status
 from charms.reactive import (
     when,
     when_any,
@@ -8,7 +9,7 @@ from charms.reactive import (
     clear_flag,
 )
 from charms.reactive.relations import endpoint_from_flag
-from charmhelpers.core.hookenv import config, log, status_set
+from charmhelpers.core.hookenv import config, log
 from charms.layer.kafka_connect_helpers import (
     set_worker_config, 
     register_connector,
@@ -33,27 +34,27 @@ MONGODB_CONNECTOR_NAME = (MODEL_NAME +
       'config.set.max-tasks',
       'mongodb.connected')
 def status_set_ready():
-    status_set('active', 'ready')
+    status.active('ready')
 
 
 @when_not("mongodb.connected")
 def blocked_for_mongodb():
-    status_set('blocked', 'Waiting for mongodb relation')
+    status.blocked('Waiting for mongodb relation')
 
 
 @when_not("config.set.db-name")
 def blocked_for_db_name():
-    status_set('blocked', 'Waiting for db-name configuration')
+    status.blocked('Waiting for db-name configuration')
 
 
 @when_not("config.set.db-collections")
 def blocked_for_db_collections():
-    status_set('blocked', 'Waiting for db-collections configuration')
+    status.blocked('Waiting for db-collections configuration')
 
 
 @when_not('config.set.max-tasks')
 def block_for_max_tasks():
-    status_set('blocked', 'Waiting for max-tasks configuration')
+    status.blocked('Waiting for max-tasks configuration')
 
 
 @when_any('config.changed.topics',
@@ -102,10 +103,10 @@ def install_kafka_connect_mongodb():
 @when_not('kafka-connect-mongodb.running')
 def start_kafka_connect_mongodb():
     if conf.get('write-batch-enabled') and not conf.get('write-batch-size'):
-        status_set('blocked', 'Write-batch-enabled is True but write-batch-size is not set')
+        status.blocked('Write-batch-enabled is True but write-batch-size is not set')
         return
     if len(conf.get('db-collections', []).split(' ')) != len(conf.get('topics', []).split(' ')):
-        status_set('blocked', 'Number of collections does not match topics')
+        status.blocked('Number of collections does not match topics')
         return
 
     mongodb = endpoint_from_flag('mongodb.connected')
@@ -126,12 +127,12 @@ def start_kafka_connect_mongodb():
 
     response = register_connector(mongodb_connector_config, MONGODB_CONNECTOR_NAME)
     if response and (response.status_code == 200 or response.status_code == 201):
-        status_set('active', 'ready')
+        status.ready('ready')
         clear_flag('kafka-connect-mongodb.stopped')
         set_flag('kafka-connect-mongodb.running')        
     else:
         log('Could not register/update connector Response: ' + str(response))
-        status_set('blocked', 'Could not register/update connector, retrying next hook.')
+        status.blocked('Could not register/update connector, retrying next hook.')
 
 
 @when('kafka-connect-mongodb.running',
