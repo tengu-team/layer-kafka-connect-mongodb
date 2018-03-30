@@ -1,5 +1,12 @@
 import os
-from charms.reactive import when, when_any, when_not, set_flag, clear_flag
+from charms import leadership
+from charms.reactive import (
+    when,
+    when_any,
+    when_not,
+    set_flag,
+    clear_flag,
+)
 from charms.reactive.relations import endpoint_from_flag
 from charmhelpers.core.hookenv import config, log, status_set
 from charms.layer.kafka_connect_helpers import (
@@ -18,6 +25,15 @@ MODEL_NAME = os.environ['JUJU_MODEL_NAME']
 MONGODB_CONNECTOR_NAME = (MODEL_NAME + 
                           JUJU_UNIT_NAME.split('/')[0] +
                           "-mongodb")
+
+
+@when('kafka-connect-base.ready',
+      'config.set.db-name',
+      'config.set.db-collections',
+      'config.set.max-tasks',
+      'mongodb.connected')
+def status_set_ready():
+    status_set('active', 'ready')
 
 
 @when_not("mongodb.connected")
@@ -51,10 +67,11 @@ def config_changed():
 
 
 @when('mongodb.connected',
-    'config.set.db-name',
-    'config.set.db-collections',
-    'config.set.max-tasks',
-    'kafka-connect-base.topic-created')
+      'config.set.db-name',
+      'config.set.db-collections',
+      'config.set.max-tasks',
+      'kafka-connect-base.topic-created',
+      'leadership.is_leader')
 @when_not('kafka-connect-mongodb.installed')
 def install_kafka_connect_mongodb():
     worker_configs = {
@@ -80,7 +97,8 @@ def install_kafka_connect_mongodb():
       'mongodb.connected',
       'config.set.db-name',
       'config.set.db-collections',
-      'config.set.max-tasks')
+      'config.set.max-tasks',
+      'leadership.is_leader')
 @when_not('kafka-connect-mongodb.running')
 def start_kafka_connect_mongodb():
     if conf.get('write-batch-enabled') and not conf.get('write-batch-size'):
@@ -116,8 +134,10 @@ def start_kafka_connect_mongodb():
         status_set('blocked', 'Could not register/update connector, retrying next hook.')
 
 
-@when('kafka-connect-mongodb.running')
-@when_not('mongodb.connected', 'kafka-connect-mongodb.stopped')
+@when('kafka-connect-mongodb.running',
+      'leadership.is_leader')
+@when_not('mongodb.connected',
+          'kafka-connect-mongodb.stopped')
 def stop_mongodb_connect():
     response = unregister_connector(MONGODB_CONNECTOR_NAME)
     if response and (response.status_code == 204 or response.status_code == 404):
