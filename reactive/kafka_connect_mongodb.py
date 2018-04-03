@@ -127,9 +127,9 @@ def start_kafka_connect_mongodb():
 
     response = register_connector(mongodb_connector_config, MONGODB_CONNECTOR_NAME)
     if response and (response.status_code == 200 or response.status_code == 201):
-        status.ready('ready')
+        status.active('ready')
         clear_flag('kafka-connect-mongodb.stopped')
-        set_flag('kafka-connect-mongodb.running')        
+        set_flag('kafka-connect-mongodb.running')
     else:
         log('Could not register/update connector Response: ' + str(response))
         status.blocked('Could not register/update connector, retrying next hook.')
